@@ -4072,10 +4072,6 @@ __nccwpck_require__.d(__webpack_exports__, {
 
 // EXTERNAL MODULE: ./node_modules/@actions/core/lib/core.js
 var core = __nccwpck_require__(186);
-;// CONCATENATED MODULE: external "node:fs"
-const external_node_fs_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:fs");
-;// CONCATENATED MODULE: external "node:path"
-const external_node_path_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:path");
 ;// CONCATENATED MODULE: external "node:child_process"
 const external_node_child_process_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:child_process");
 ;// CONCATENATED MODULE: external "node:os"
@@ -4118,6 +4114,10 @@ async function execShell(command, { silent = false, ...options } = {}) {
     }
 }
 
+;// CONCATENATED MODULE: external "node:fs"
+const external_node_fs_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:fs");
+;// CONCATENATED MODULE: external "node:path"
+const external_node_path_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:path");
 ;// CONCATENATED MODULE: ./src/utils.ts
 
 
@@ -4199,8 +4199,6 @@ function getPackageManager(name, { workingDirectory = "." } = {}) {
 
 
 
-
-
 const DEFAULT_WRANGLER_VERSION = "3.13.2";
 /**
  * A configuration object that contains all the inputs & immutable state for the action.
@@ -4216,7 +4214,6 @@ const config = {
     COMMANDS: (0,core.getMultilineInput)("command"),
     QUIET_MODE: (0,core.getBooleanInput)("quiet"),
     PACKAGE_MANAGER: (0,core.getInput)("packageManager"),
-    OUTPUT_TO_FILE: (0,core.getBooleanInput)("outputToFile"),
 };
 const packageManager = getPackageManager(config.PACKAGE_MANAGER, {
     workingDirectory: config.workingDirectory,
@@ -4383,7 +4380,7 @@ async function wranglerCommands() {
                     args.push(`${v}:${getEnvVar(v)}`);
                 }
             }
-            // Used for saving the wrangler output to a file
+            // Used for saving the wrangler output
             let stdOut = "";
             let stdErr = "";
             // Construct the options for the exec command
@@ -4401,19 +4398,18 @@ async function wranglerCommands() {
             };
             // Execute the wrangler command
             await (0,exec.exec)(`${packageManager.exec} wrangler ${command}`, args, options);
-            // If the user has specified to output the wrangler command to a file save the stdout and stderr
-            if (config["OUTPUT_TO_FILE"]) {
-                // Create the output data in a machine readable format
-                const outputData = {
-                    stdOut: stdOut,
-                    stdErr: stdErr,
-                };
-                // Consturct the file output path to use the current working directory
-                const outputFilePath = (0,external_node_path_namespaceObject.join)(config["workingDirectory"], "wrangler-command-output.json");
-                // Write the output to a JSON file
-                (0,external_node_fs_namespaceObject.writeFileSync)(outputFilePath, JSON.stringify(outputData));
-                info(`✅ wrangler-command-output output saved to ${outputFilePath}`, true);
-                (0,core.setOutput)("wranglerCommandOutputFile", outputFilePath);
+            // Set the outputs for the command
+            (0,core.setOutput)("command-output", stdOut);
+            (0,core.setOutput)("command-stderr", stdErr);
+            // Check if this command is a workers or pages deployment
+            if (command.startsWith("deploy") || command.startsWith("publish")) {
+                // If this is a workers or pages deployment, try to extract the deployment URL
+                let deploymentUrl = "";
+                const deploymentUrlMatch = stdOut.match(/https?:\/\/[a-zA-Z0-9-\.\/]+/);
+                if (deploymentUrlMatch && deploymentUrlMatch[0]) {
+                    deploymentUrl = deploymentUrlMatch[0].trim();
+                    (0,core.setOutput)("deployment-url", deploymentUrl);
+                }
             }
         }
     }
