@@ -4402,7 +4402,9 @@ async function wranglerCommands() {
             (0,core.setOutput)("command-output", stdOut);
             (0,core.setOutput)("command-stderr", stdErr);
             // Check if this command is a workers or pages deployment
-            if (command.startsWith("deploy") || command.startsWith("publish")) {
+            if (command.startsWith("deploy") ||
+                command.startsWith("publish") ||
+                command.startsWith("pages publish")) {
                 // If this is a workers or pages deployment, try to extract the deployment URL
                 let deploymentUrl = "";
                 const deploymentUrlMatch = stdOut.match(/https?:\/\/[a-zA-Z0-9-\.\/]+/);
