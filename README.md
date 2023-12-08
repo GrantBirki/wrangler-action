@@ -220,9 +220,9 @@ For more advanced usage or to programmatically trigger the workflow from scripts
 
 ## Advanced Usage
 
-### Saving Wrangler Command Output to a File
+### Using Wrangler Command Output in Subsequent Steps
 
-More advanced workflows may need to parse the resulting output of Wrangler commands. To do this, you can use the `outputFile` option to save the output of the command to a file. This file will be available to subsequent steps in the workflow. The format of this file is JSON so that it can be easily parsed by other steps.
+More advanced workflows may need to parse the resulting output of Wrangler commands. To do this, you can use the `command-output` output variable in subsequent steps. For example, if you want to print the output of the Wrangler command, you can do the following:
 
 ```yaml
 - name: Deploy
@@ -232,22 +232,41 @@ More advanced workflows may need to parse the resulting output of Wrangler comma
     apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
     accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     command: pages deploy --project-name=example
-    outputFile: "true"
 
 - name: print wrangler command output
   env:
-    OUTPUT_PATH: ${{ steps.deploy.outputs.wranglerCommandOutputFile }}
-  run: cat $OUTPUT_PATH
+    CMD_OUTPUT: ${{ steps.deploy.outputs.command-output }}
+  run: echo $CMD_OUTPUT
 ```
 
-Now when you run your workflow, you will see the output of the Wrangler command in the logs that should be in the following structure:
-  
-  ```json
-  {
-    "stdout": "stdout text here",
-    "stderr": "stderr text here"
-  }
-  ```
+Now when you run your workflow, you will see the full output of the Wrangler command in your workflow logs. You can also use this output in subsequent workflow steps to parse the output for specific values.
+
+> Note: the `command-stderr` output variable is also available if you need to parse the standard error output of the Wrangler command.
+
+### Using the `deployment-url` Output Variable
+
+If you are executing a Wrangler command that results in either a workers or pages deployment, you can utilize the `deployment-url` output variable to get the URL of the deployment. For example, if you want to print the deployment URL after deploying your application, you can do the following:
+
+```yaml
+- name: Deploy
+  id: deploy
+  uses: cloudflare/wrangler-action@v3
+  with:
+    apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    command: pages deploy --project-name=example
+
+- name: print deployment-url
+  env:
+    DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
+  run: echo $DEPLOYMENT_URL
+```
+
+The resulting output will look something like this:
+
+```text
+https://<your_pages_site>.pages.dev
+```
 
 ## Troubleshooting
 

@@ -9,8 +9,6 @@ import {
 	setFailed,
 	setOutput,
 } from "@actions/core";
-import { writeFileSync } from "node:fs";
-import { join } from "node:path";
 import { exec, execShell } from "./exec";
 import { checkWorkingDirectory, semverCompare } from "./utils";
 import { getPackageManager } from "./packageManagers";
@@ -31,7 +29,6 @@ const config = {
 	COMMANDS: getMultilineInput("command"),
 	QUIET_MODE: getBooleanInput("quiet"),
 	PACKAGE_MANAGER: getInput("packageManager"),
-	OUTPUT_TO_FILE: getBooleanInput("outputToFile"),
 } as const;
 
 const packageManager = getPackageManager(config.PACKAGE_MANAGER, {
@@ -246,7 +243,7 @@ async function wranglerCommands() {
 				}
 			}
 
-			// Used for saving the wrangler output to a file
+			// Used for saving the wrangler output
 			let stdOut = "";
 			let stdErr = "";
 
@@ -267,27 +264,19 @@ async function wranglerCommands() {
 			// Execute the wrangler command
 			await exec(`${packageManager.exec} wrangler ${command}`, args, options);
 
-			// If the user has specified to output the wrangler command to a file save the stdout and stderr
-			if (config["OUTPUT_TO_FILE"]) {
-				// Create the output data in a machine readable format
-				const outputData = {
-					stdOut: stdOut,
-					stdErr: stdErr,
-				};
+			// Set the outputs for the command
+			setOutput("command-output", stdOut);
+			setOutput("command-stderr", stdErr);
 
-				// Consturct the file output path to use the current working directory
-				const outputFilePath = join(
-					config["workingDirectory"],
-					"wrangler-command-output.json",
-				);
-
-				// Write the output to a JSON file
-				writeFileSync(outputFilePath, JSON.stringify(outputData));
-				info(
-					`✅ wrangler-command-output output saved to ${outputFilePath}`,
-					true,
-				);
-				setOutput("wranglerCommandOutputFile", outputFilePath);
+			// Check if this command is a workers or pages deployment
+			if (command.startsWith("deploy") || command.startsWith("publish")) {
+				// If this is a workers or pages deployment, try to extract the deployment URL
+				let deploymentUrl = "";
+				const deploymentUrlMatch = stdOut.match(/https?:\/\/[a-zA-Z0-9-\.\/]+/);
+				if (deploymentUrlMatch && deploymentUrlMatch[0]) {
+					deploymentUrl = deploymentUrlMatch[0].trim();
+					setOutput("deployment-url", deploymentUrl);
+				}
 			}
 		}
 	} finally {
